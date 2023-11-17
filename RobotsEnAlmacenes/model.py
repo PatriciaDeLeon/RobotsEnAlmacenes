@@ -6,6 +6,7 @@ from mesa.datacollection import DataCollector
 
 import numpy as np
 import math
+import random
 
 class Celda(Agent):
     def __init__(self, unique_id, model, suciedad: bool = False):
@@ -251,33 +252,39 @@ class Habitacion(Model):
                  porc_celdas_sucias: float = 0.6,
                  porc_muebles: float = 0.1,
                  modo_pos_inicial: str = 'Fija',
+                 cant_robots: int = 10
                  ):
 
         self.num_agentes = num_agentes
         self.porc_celdas_sucias = porc_celdas_sucias
         self.porc_muebles = porc_muebles
         self.todas_celdas_limpias = False
+        self.cant_robots= cant_robots
 
-        # Calcula la posición central del plano cartesiano más un avance en las celdas
-        center_x = (M // 2) + 5
-        center_y = (N // 2) + 5
 
         # Se guardan las posiciones de los cargadores
         self.pos_cargadores = [
-            (center_x, center_y),
-            (center_x - 11, center_y),
-            (center_x, center_y - 11),
-            (center_x - 11, center_y - 11)
+            (10, 0),
+            (11, 0),
+            (12, 0),
         ]
 
-# Se guardan las posiciones de los cargadores
-  
+        # Se guardan las posiciones de los estantes
         self.pos_estantes = [
-            for i in range()
-            x=random.choice(0,4)
-            y=random.choice(0,1)
-            pos_estantes.append((x,y))
+            (10, 5), (11,5),(12,5),
+            (10, 10),(11,10), (12,10),
+            (10, 15),(11,15), (12,15),
+
+            (15, 5), (16,5),(17,5),
+            (15, 10),(16,10), (17,10),
+            (15, 15),(16,15), (17,15)
         ]
+
+        # Se guardan las posiciones de los robots
+        combinaciones = [(x, y) for x in range(5) for y in range(2)]
+        self.pos_robots=[]
+        for i in range(cant_robots):
+            self.pos_robots.append(combinaciones[i])
 
         # Inicializamos un listado de problemas
         self.problemas = list()
@@ -294,18 +301,24 @@ class Habitacion(Model):
 
         posiciones_disponibles = [pos for _, pos in self.grid.coord_iter()]
 
+        # Posicionamiento de robots
+        for id, pos in enumerate(self.pos_robots):
+            robot = Robot(id, self)
+            self.grid.place_agent(robot, self.pos_robots[id])
+            self.schedule.add(robot)
+            posiciones_disponibles.remove(pos)
+
         # Posicionamiento de cargadores
         for id, pos in enumerate(self.pos_cargadores):
             cargador = Cargador(int(f"{num_agentes}0{id}") + 1, self)
             self.grid.place_agent(cargador, pos)
             posiciones_disponibles.remove(pos)
 
-        # Posicionamiento de muebles
-        num_muebles = int(M * N * porc_muebles)
-        posiciones_muebles = self.random.sample(posiciones_disponibles, k = num_muebles)
-        for id, pos in enumerate(posiciones_muebles):
-            mueble = Estante(int(f"{num_agentes}0{id}") + 1, self)
-            self.grid.place_agent(mueble, pos)
+        # Posicionamiento de estantes
+         # Posicionamiento de cargadores
+        for id, pos in enumerate(self.pos_estantes):
+            estante = Estante(int(f"{num_agentes}0{id}") + 1, self)
+            self.grid.place_agent(estante, pos)
             posiciones_disponibles.remove(pos)
 
         # Posicionamiento de celdas sucias
@@ -316,15 +329,7 @@ class Habitacion(Model):
             celda = Celda(int(f"{num_agentes}{id}") + 1, self, suciedad)
             self.grid.place_agent(celda, pos)
 
-        # Posicionamiento de agentes robot
-        if modo_pos_inicial == 'Aleatoria':
-            pos_inicial_robots = self.random.sample(posiciones_disponibles, k = num_agentes)
-        else: # 'Fija'
-            pos_inicial_robots = [(1, 1)] * num_agentes
-        for id in range(num_agentes):
-            robot = Robot(id, self)
-            self.grid.place_agent(robot, pos_inicial_robots[id])
-            self.schedule.add(robot)
+        
 
         # Variables utilizadas para las gráficas en el server.py
         self.datacollector = DataCollector(
