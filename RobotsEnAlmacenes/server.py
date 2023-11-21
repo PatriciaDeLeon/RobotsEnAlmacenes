@@ -43,8 +43,8 @@ grid = mesa.visualization.CanvasGrid(agent_portrayal, 20, 20, 400, 400)
 model_params = {
     "num_agentes": mesa.visualization.Slider(
         "Número de Robots",
-        5, # Valor inicial al correr la simulación
-        2, # Valor mínimo
+        2, # Valor inicial al correr la simulación
+        1, # Valor mínimo
         MAX_NUMBER_ROBOTS, # Valor máximo
         1, # Salto del slider
         description = "Escoge cuántos robots deseas implementar en el modelo",
