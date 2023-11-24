@@ -7,6 +7,9 @@ from mesa.datacollection import DataCollector
 import numpy as np
 import math
 
+import requests
+import json
+
 class Celda(Agent):
     def __init__(self, unique_id, model, suciedad: bool = False):
         super().__init__(unique_id, model)
@@ -374,11 +377,20 @@ class Robot(Agent):
 class Habitacion(Model):
     def __init__(self, M: int, N: int,
                  num_agentes: int = 5,
+                 num_cargadores: int = 3,
+                 num_cajas_entrada: int = 4,
+                 num_cajas_salida: int = 4,
+                 num_steps: int = 120,
                  pedido : dict = {},
+                 combinaciones_cargadores: list = [],
                  combinaciones: list =[]
                  ):
         
         self.num_agentes = num_agentes
+        self.num_cargadores = num_cargadores
+        self.num_cajas_entrada = num_cajas_entrada
+        self.num_cajas_salida = num_cajas_salida
+        self.num_steps = num_steps
         self.todas_celdas_limpias = False
         self.pedido=pedido
 
@@ -386,6 +398,8 @@ class Habitacion(Model):
         self.tiempo = 0
         self.movimientos = 0
         self.cantidad_recargas = 0
+        self.cajas_entregadas = 0
+        self.cajas_enviadas = 0
 
         # Permite la habilitación de las capas en el ambiente
         self.grid = MultiGrid(M, N, False)
@@ -394,22 +408,49 @@ class Habitacion(Model):
 
         posiciones_disponibles = [pos for _, pos in self.grid.coord_iter()]
 
+        # Asignación de cajas de entrada y salida a cada producto
+        total_cajas_entrada = num_cajas_entrada
+        total_cajas_salida = num_cajas_salida
+
         #El primer valor de la lista es la cantidad que se tiene que poner en estante, el segundo los que se tienen que llevar a camion
-        pedido['SanAnna Water'] = [2,2]
-        pedido['Bio Bottle'] = [1,0]
-        pedido['Santhe'] = [3,0]
-        pedido['Beauty'] = [3,1]
-        pedido['Fruity Touch'] = [1,0]
-        pedido['SantAnna Pro'] = [1,1]
+        pedido['SanAnna Water'] = [0, 0]
+        pedido['Bio Bottle'] = [0, 0]
+        pedido['Santhe'] = [0, 0]
+        pedido['Beauty'] = [0, 0]
+        pedido['Fruity Touch'] = [0, 0]
+        pedido['SantAnna Pro'] = [0, 0]
+
+        # Asignar cajas de entrada a cada producto de manera secuencial
+        for _ in range(total_cajas_entrada):
+            for producto in pedido:
+                print(producto)
+                print(total_cajas_entrada)
+                cajas_entrada_asignadas = min(total_cajas_entrada, 1)
+                pedido[producto][0] = cajas_entrada_asignadas
+                total_cajas_entrada -= cajas_entrada_asignadas
+                
+            if total_cajas_entrada == 0:
+                break  # Salir del bucle si no hay más cajas de entrada disponibles
+
+        # Asignar cajas de salida a cada producto de manera secuencial
+        for _ in range(total_cajas_salida):
+            for producto in pedido:
+                # print(producto)
+                # print(total_cajas_salida)
+                cajas_salida_asignadas = min(total_cajas_salida, 1)
+                pedido[producto][1] = cajas_salida_asignadas
+                total_cajas_salida -= cajas_salida_asignadas
+            
+            if total_cajas_salida == 0:
+                break  # Salir del bucle si no hay más cajas de entrada disponibles
 
         # Se guardan las posiciones de los cargadores
-        self.pos_cargadores = [
-            (10, 0),
-            (11, 0),
-            (12, 0),
-        ]
+        combinaciones_cargadores = [(x + 10, y) for x in range(3) for y in range(1)]
+        self.pos_cargadores = []
+        for i in range(num_cargadores):
+            self.pos_cargadores.append(combinaciones_cargadores[i])
         for elemento in self.pos_cargadores:
-            posiciones_disponibles.remove(elemento)
+            posiciones_disponibles.remove(elemento) 
 
 
         # Se guardan las posiciones de los estantes
@@ -492,6 +533,7 @@ class Habitacion(Model):
         # Recolecta la información de las gráficas
         self.datacollector.collect(self)
         self.schedule.step()
+        self.tiempo += 1
     
     #Funciones para recolectar las listas de agentes
     def get_cargadores(self):
