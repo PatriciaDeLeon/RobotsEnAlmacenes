@@ -392,7 +392,7 @@ class Habitacion(Model):
         self.num_cargadores = num_cargadores
         self.num_cajas_entrada = num_cajas_entrada
         self.num_cajas_salida = num_cajas_salida
-        self.num_steps = total_steps
+        self.total_steps = total_steps
         self.todas_celdas_limpias = False
         self.pedido=pedido
 

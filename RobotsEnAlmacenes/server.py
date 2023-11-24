@@ -85,15 +85,6 @@ model_params = {
         1, # Salto del slider
         description = "Escoge cuántas cajas de salida deseas implementar en el modelo",
     ),
-    "num_steps": mesa.visualization.Slider(
-        "Número de Steps",
-        120, # Valor inicial al correr la simulación
-        60, # Valor mínimo
-        MAX_STEPS, # Valor máximo
-        60, # Salto del slider
-        description = "Escoge cuántos steps deseas implementar en el modelo",
-    ),
-   
     "M": 20,
     "N": 20,
     "total_steps": total_steps  # Aquí debes proporcionar un valor adecuado para total_steps
@@ -101,13 +92,13 @@ model_params = {
 
 app = Flask(__name__)
 
-def make_model(num_agentes, num_cargadores, num_cajas_entrada, num_cajas_salida, num_steps, M, N):
+def make_model(num_agentes, num_cargadores, num_cajas_entrada, num_cajas_salida, total_steps, M, N):
     return Habitacion(
         num_agentes=num_agentes,
         num_cargadores=num_cargadores,
         num_cajas_entrada=num_cajas_entrada,
         num_cajas_salida=num_cajas_salida,
-        num_steps=num_steps,
+        total_steps=total_steps,
         M=M,
         N=N
     )
@@ -142,6 +133,9 @@ def receive_data():
         # Actualizamos el modelo
         server.model = make_model(
             num_agentes = robots,
+            num_cargadores=chargers,
+            num_cajas_entrada=in_boxes,
+            num_cajas_salida=out_boxes,
             M=model_params["M"],
             N=model_params["N"],
             total_steps = total_steps  
