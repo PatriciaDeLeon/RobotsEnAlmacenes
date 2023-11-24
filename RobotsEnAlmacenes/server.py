@@ -14,6 +14,7 @@ chargers = 3
 in_boxes = 6
 out_boxes = 3
 steps = 120
+total_steps = 60
 
 
 def agent_portrayal(agent):
@@ -95,6 +96,7 @@ model_params = {
    
     "M": 20,
     "N": 20,
+    "total_steps": total_steps  # Aquí debes proporcionar un valor adecuado para total_steps
 }
 
 app = Flask(__name__)
@@ -110,10 +112,103 @@ def make_model(num_agentes, num_cargadores, num_cajas_entrada, num_cajas_salida,
         N=N
     )
 
+
 server = mesa.visualization.ModularServer(
     make_model, [grid],
     "botCleaner", model_params, 8521
 )
 
+@app.route("/receive_data", methods=["POST"])
+def receive_data():
+    global robots
+    global server
+    global chargers
+    global in_boxes
+    global out_boxes
+    try:
+        data_json = request.json
+        print(data_json)
+
+        robots = data_json["robots"]
+        chargers = data_json["chargers"]
+        minutes = data_json["minutes"]
+        seconds = data_json["seconds"]
+        in_boxes = data_json["inBoxes"]
+        out_boxes = data_json["outBoxes"]
+        
+        # Calcular el número total de steps
+        total_steps = minutes * 60 + seconds
+
+        # Actualizamos el modelo
+        server.model = make_model(
+            num_agentes = robots,
+            M=model_params["M"],
+            N=model_params["N"],
+            total_steps = total_steps  
+        )
+        model_params["num_agentes"].value = robots
+        model_params["total_steps"] = total_steps
+        tiempo = 0
+
+        # Lanzamos la simulación
+        server.launch()
+        server.model.step()
+  
+
+        return jsonify({"message": "Simulación reiniciada correctamente"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+@app.route("/get_robot_positions")
+def get_robot_positions():
+    model = server.model
+
+    if isinstance(model, Habitacion):
+        positions = model.get_robot_positions()
+        return jsonify(positions)
+    else:
+        return jsonify({"error": "Model is not an instance of Habitacion"})
+    
+@app.route("/get_box_positions")
+def get_box_positions():
+    model = server.model
+
+    if isinstance(model, Habitacion):
+        positions = model.get_box_positions()
+        return jsonify(positions)
+    else:
+        return jsonify({"error": "El modelo no es una instancia de Habitacion"})
+
+@app.route("/get_cargador_positions")
+def get_cargador_positions():
+    model = server.model
+
+    if isinstance(model, Habitacion):
+        positions = model.get_cargador_positions()
+        return jsonify(positions)
+    else:
+        return jsonify({"error": "El modelo no es una instancia de Habitacion"})
+    
+@app.route("/get_estante_positions")
+def get_estante_positions():
+    model = server.model
+
+    if isinstance(model, Habitacion):
+        positions = model.get_estante_positions()
+        return jsonify(positions)
+    else:
+        return jsonify({"error": "El modelo no es una instancia de Habitacion"})
+    
+# Definir una ruta para obtener los datos
+@app.route('/get_simulation_data', methods=['GET'])
+def get_simulation_data():
+    model = server.model
+    
+    if isinstance(model, Habitacion):
+        data = model.send_data_to_api()
+        return jsonify(data)
+    else:
+        return jsonify({"error": "El modelo no es una instancia de Habitacion"})
+    
 if __name__ == "__main__":
     app.run(port=5000)

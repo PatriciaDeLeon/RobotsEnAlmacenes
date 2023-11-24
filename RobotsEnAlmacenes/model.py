@@ -40,6 +40,7 @@ class Caja(Agent):
                 #desaparecerla
                 self.model.schedule.remove(self)
                 self.model.grid.remove_agent(self)
+                self.model.cajas_enviadas += 1
         else:
             celdadeCarga = self.model.grid.get_cell_list_contents((0,10)) #celda de salida
 
@@ -250,6 +251,7 @@ class Robot(Agent):
                     print(self.unique_id,"llevando a estante")
                     self.objetivo=estante
                     self.objetivo.ocupado=1 #y el estante se marca como ocupado
+                    self.model.cajas_entregadas += 1
                     break
             #mueve la caja consigo
             for caja in cajas:
@@ -380,7 +382,7 @@ class Habitacion(Model):
                  num_cargadores: int = 3,
                  num_cajas_entrada: int = 4,
                  num_cajas_salida: int = 4,
-                 num_steps: int = 120,
+                 total_steps: int = 120,
                  pedido : dict = {},
                  combinaciones_cargadores: list = [],
                  combinaciones: list =[]
@@ -390,16 +392,18 @@ class Habitacion(Model):
         self.num_cargadores = num_cargadores
         self.num_cajas_entrada = num_cajas_entrada
         self.num_cajas_salida = num_cajas_salida
-        self.num_steps = num_steps
+        self.num_steps = total_steps
         self.todas_celdas_limpias = False
         self.pedido=pedido
 
         # Inicialización de variables de datos
-        self.tiempo = 0
+        self.tiempo = 1
         self.movimientos = 0
         self.cantidad_recargas = 0
         self.cajas_entregadas = 0
         self.cajas_enviadas = 0
+        self.total_steps = total_steps
+        self.running = True
 
         # Permite la habilitación de las capas en el ambiente
         self.grid = MultiGrid(M, N, False)
@@ -548,6 +552,42 @@ class Habitacion(Model):
     def get_robots(self):
         robots = [agente for agente in self.schedule.agents if isinstance(agente, Robot)]
         return robots
+    def get_robot_positions(self):
+        positions = {}
+        for robot in self.schedule.agents:
+            if isinstance(robot, Robot):
+                positions[robot.unique_id] = {"x": robot.pos[0], "y": robot.pos[1]}
+        return positions
+    def set_num_agentes(self, num_agentes):
+        self.num_agentes = num_agentes
+    def get_box_positions(self):
+        positions = {}
+        for caja in self.schedule.agents:
+            if isinstance(caja, Caja):
+                positions[caja.unique_id] = {"x": caja.pos[0], "y": caja.pos[1]}
+        return positions
+    def get_cargador_positions(self):
+        positions = {}
+        for cargador in self.schedule.agents:
+            if isinstance(cargador, Cargador):
+                positions[cargador.unique_id] = {"x": cargador.pos[0], "y": cargador.pos[1]}
+        return positions
+    def get_estante_positions(self):
+        positions = {}
+        for estante in self.schedule.agents:
+            if isinstance(estante, Estante):
+                positions[estante.unique_id] = {"x": estante.pos[0], "y": estante.pos[1]}
+        return positions
+    # ✓ Función para enviar datos al API Flask en server.py
+    def send_data_to_api(self):
+        data = {
+            "CajasEntregadas": self.cajas_entregadas,
+            "CajasEnviadas": self.cajas_enviadas,
+            "Duracion": self.tiempo,
+            "CargasCompletas": self.cantidad_recargas,
+            "MovimientosTotales": self.movimientos
+        }
+        return data
     
 #    Método para la obtención de la grid y representarla en un notebook  
 def get_grid(model: Model) -> np.ndarray:
