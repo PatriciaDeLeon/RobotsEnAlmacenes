@@ -534,11 +534,16 @@ class Habitacion(Model):
 
     # ✓ Función encargada de ejecutar un paso en la simulación 
     def step(self):
-        # Recolecta la información de las gráficas
-        self.datacollector.collect(self)
-        self.schedule.step()
-        self.tiempo += 1
-    
+               
+        # Verificar si se alcanzó el límite de steps
+        if self.tiempo == self.total_steps:
+            self.running = False
+        else:
+            # Recolecta la información de las gráficas
+            self.datacollector.collect(self)
+            self.schedule.step()
+            self.tiempo += 1
+            
     #Funciones para recolectar las listas de agentes
     def get_cargadores(self):
         cargadores = [agente for agente in self.schedule.agents if isinstance(agente, Cargador)]
