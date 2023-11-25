@@ -13,7 +13,6 @@ import json
 class Celda(Agent):
     def __init__(self, unique_id, model, suciedad: bool = False):
         super().__init__(unique_id, model)
-        self.sucia = suciedad
 
 class Estante(Agent):
     def __init__(self, unique_id, model):
@@ -44,7 +43,7 @@ class Caja(Agent):
         else:
             celdadeCarga = self.model.grid.get_cell_list_contents((0,10)) #celda de salida
 
-            #la caja se esta moviendo junto con un robot
+            #Solo en el momento que la caja apenas se va a salir de la entrada
             if self.sig_pos!=self.pos and self.pos==(0,10) and self.sig_pos != None:
                 #crea una nueva caja con producto igual al primer producto que todavia tenga pedido
                 for product, cantidad in self.model.pedido.items():
@@ -55,8 +54,7 @@ class Caja(Agent):
                         self.model.grid.place_agent(nueva_caja, self.pos)
                         self.model.schedule.add(nueva_caja)
                         break
-
-            if self.sig_pos!=None:
+            if self.sig_pos!=None:#Mover la caja en el grid
                 self.model.grid.move_agent(self, self.sig_pos)
 
 class Robot(Agent):
@@ -66,9 +64,7 @@ class Robot(Agent):
         self.movimientos = 0
         self.carga = 100
         self.objetivo = None
-        self.celdas_sucias = 0
         self.pos_inicial=None
-        self.pos_anterior=None
 
     # ✓ Función que encuentra las celdas disponibles alrededor de un robot
     def buscar_celdas_disponibles(self, tipo_agente):
@@ -82,15 +78,10 @@ class Robot(Agent):
             # Si el elemento es una instancia del elemento del tipo de agente
             if isinstance(vecino, tipo_agente):
                 celdas.append(vecino) # Lo mete al arreglo de celdas
-                #Si estamos buscando estantes se asegura que el estante sea del mismo tipo del producto de la caja que trae
-                #if isinstance(vecino, Estante) and self.objetivo.pos in self.model.pos_estantes:
-                 #   if vecino!=self.objetivo:#si es diferente
-                  #     celdas.remove(vecino) # Lo sacamos
                 #Eliminar los estantes de disponibles a menos que su objetivo sea un estante
                 if isinstance(vecino, Caja) or  isinstance(vecino, Estante):
                     if self.objetivo !=vecino or (self.objetivo.pos in self.model.pos_estantes and vecino!=self.objetivo) :
                         celdas.remove(vecino) # Lo sacamos
-
 
         # Lista de celdas disponibles
         celdas_disponibles = list()
@@ -137,7 +128,6 @@ class Robot(Agent):
 
     # ✓ Función que mueve un robot a una posición específica
     def viajar_a_objetivo(self):  
-         #Lista de objetivos que ya marcaron los otros robots
         cajas= self.model.get_cajas()
         posi_cajas=[]
         for caja in cajas:
@@ -183,8 +173,23 @@ class Robot(Agent):
             if self.carga == 100:
                 self.model.cantidad_recargas += 1
     
-    def seleccionar_nueva_pos(self, lista_de_vecinos):
-        self.sig_pos = self.random.choice(lista_de_vecinos).pos
+  # ✓ Función encargada de elegir una posicion aleatoria cuando esta abajo de un estante y no tiene objetivo 
+    def seleccionar_pos_aleatoria(self, cajas, estantes, robots):
+        vecinos =self.model.grid.get_neighborhood(
+        self.pos, moore=True, include_center=False)
+        vecinosF =list(vecinos)
+        for vecino in vecinos:
+            celda = self.model.grid.get_cell_list_contents(vecino) #celda de salida
+            for agente in celda:
+                if agente in cajas or agente in estantes or agente in robots:
+                    vecinosF.remove(vecino) # Lo sacamos
+                    break
+        self.sig_pos = self.random.choice(vecinosF)
+
+    # ✓ Función encargada de moverse a posicion inicial
+    def moverse_posInicial(self):
+        self.objetivo=self.pos_inicial
+        self.viajar_a_objetivo()
 
     # ✓ Función encargada de ejecutar un paso en la simulación 
     def step(self):
@@ -212,8 +217,6 @@ class Robot(Agent):
         for robot in robots:
             if robot!=self:
                 pos_robots.append(robot.pos)
-
-        self.pos_anterior=self.pos
 
         # El robot llegó a su objetivo
         if self.objetivo is not None:
@@ -258,13 +261,7 @@ class Robot(Agent):
                 if caja.pos==self.pos:
                     self.viajar_a_objetivo()
                     caja.sig_pos=self.sig_pos
-        # 3. El robot tiene batería baja y necesita cargarse, entra aqui hasta su objetivo ya no sea un estante o la celda de salida
-        elif self.carga <= 50 and self.objetivo == None:
-            # Se le asigna el cargador más cercano y se acerca al cargador
-            self.seleccionar_objetivo(cargadores)
-            self.viajar_a_objetivo()
-            print(self.unique_id,"necesito cargarme")
-
+       
         # 4. El robot tiene un estante y está viajando hacia este
         elif self.objetivo in estantes:
             for caja in cajas:
@@ -291,8 +288,17 @@ class Robot(Agent):
         #8. Esta yendo por una caja
         elif self.objetivo in cajas:
             self.viajar_a_objetivo()
+
+        
+        # 8. El robot tiene batería baja y necesita cargarse, entra aqui hasta su objetivo ya no sea un estante o la celda de salida
+        elif self.carga <= 50 and self.objetivo == None :
+            # Se le asigna el cargador más cercano y se acerca al cargador
+            self.seleccionar_objetivo(cargadores)
+            self.viajar_a_objetivo()
+            print(self.unique_id,"necesito cargarme")
+
         # 9. El robot esta buscando caja
-        elif self.objetivo == None :
+        elif self.objetivo == None or self.objetivo==self.pos_inicial:
             
             if not MitadPedidoCompleto:      
                 for product, cantidad in self.model.pedido.items():
@@ -302,10 +308,12 @@ class Robot(Agent):
                             if caja.pos == (0,10):
                                 #si la caja del camion no es objetivo
                                 if caja not in objetivos and caja.pos not in pos_robots:
-                                    print(self.unique_id, "yendo a entrada")
-
+                                    print(self.unique_id, "yendo a entradaAA")
+                                    print("ahhhh")
                                     self.objetivo = caja #su objetivo es esa caja
+                                    print("CAJA",caja)
                                     self.viajar_a_objetivo()
+                                    print("OBSJ", self.sig_pos)
                                     self.model.pedido[product]=[cantidad[0]-1,cantidad[1]] #se disminuye uno al pedido
                                     break_outer = True  # Set the flag to True to request a break
                                     break
@@ -332,29 +340,20 @@ class Robot(Agent):
 
             #No hay cajas en la entrada ni para recoger de estantes
             if PedidoCompleto == True:
-                print(self.unique_id, "pedido completo")
-                self.objetivo=self.pos_inicial #su objetivo es la posicion de descanso
-                self.viajar_a_objetivo()    
-            elif self.objetivo==None: #todas las cajas estan marcadas como objetivo
-                self.sig_pos=self.pos
-
-
-        # 10. Esta en area de descanso, se queda ahi
-        elif self.pos == self.pos_inicial.pos:
-            self.sig_pos=self.pos
-        #11. El robot esta buscando su area de descanso
-        elif self.objetivo == self.pos_inicial:
-            self.viajar_a_objetivo()
+                self.moverse_posInicial()
+                if self.pos==self.pos_inicial.pos:
+                    self.sig_pos=self.pos
+                #El pedido no esta completo, no tiene objetivo, pero ya esta en su posicion inicial
+            elif self.objetivo==None and self.pos == self.pos_inicial.pos or self.objetivo==self.pos_inicial and self.pos == self.pos_inicial.pos:
+                    self.sig_pos=self.pos
+                #El pedido no esta completo, no tiene objetivo, pero todavia no llega a su posicion inicial
+            elif self.objetivo==None and self.pos!=self.pos_inicial.pos or self.objetivo==self.pos_inicial: 
+                    self.moverse_posInicial()
         
         #Para que nunca esten estorbando en la posicion de salida o en un estante
-        if self.pos == (0,15) or self.pos in self.model.pos_estantes and self.objetivo==None:
+        if self.pos in self.model.pos_estantes and self.objetivo==None:        
             print(self.unique_id,"random")
-            vecinos = self.model.grid.get_neighbors(
-            self.pos, moore=True, include_center=False)
-            for vecino in vecinos:
-                if isinstance(vecino, Caja) or  isinstance(vecino, Estante):
-                    vecinos.remove(vecino) # Lo sacamos
-            self.seleccionar_nueva_pos(vecinos)
+            self.seleccionar_pos_aleatoria(cajas, estantes, robots)
             
         # Se avanza en la simulación
         self.advance()
@@ -384,8 +383,7 @@ class Habitacion(Model):
                  num_cajas_salida: int = 4,
                  total_steps: int = 120,
                  pedido : dict = {},
-                 combinaciones_cargadores: list = [],
-                 combinaciones: list =[]
+                 combinaciones_cargadores: list = []
                  ):
         
         self.num_agentes = num_agentes
@@ -417,20 +415,20 @@ class Habitacion(Model):
         total_cajas_salida = num_cajas_salida
 
         #El primer valor de la lista es la cantidad que se tiene que poner en estante, el segundo los que se tienen que llevar a camion
-        pedido['SanAnna Water'] = [0, 0]
-        pedido['Bio Bottle'] = [0, 0]
-        pedido['Santhe'] = [0, 0]
-        pedido['Beauty'] = [0, 0]
-        pedido['Fruity Touch'] = [0, 0]
-        pedido['SantAnna Pro'] = [0, 0]
+        self.pedido['SanAnna Water'] = [0, 0]
+        self.pedido['Bio Bottle'] = [0, 0]
+        self.pedido['Santhe'] = [0, 0]
+        self.pedido['Beauty'] = [0, 0]
+        self.pedido['Fruity Touch'] = [0, 0]
+        self.pedido['SantAnna Pro'] = [0, 0]
 
         # Asignar cajas de entrada a cada producto de manera secuencial
         for _ in range(total_cajas_entrada):
-            for producto in pedido:
+            for producto in self.pedido:
                 print(producto)
                 print(total_cajas_entrada)
                 cajas_entrada_asignadas = min(total_cajas_entrada, 1)
-                pedido[producto][0] = cajas_entrada_asignadas
+                self.pedido[producto][0] += cajas_entrada_asignadas
                 total_cajas_entrada -= cajas_entrada_asignadas
                 
             if total_cajas_entrada == 0:
@@ -438,16 +436,17 @@ class Habitacion(Model):
 
         # Asignar cajas de salida a cada producto de manera secuencial
         for _ in range(total_cajas_salida):
-            for producto in pedido:
+            for producto in self.pedido:
                 # print(producto)
                 # print(total_cajas_salida)
                 cajas_salida_asignadas = min(total_cajas_salida, 1)
-                pedido[producto][1] = cajas_salida_asignadas
+                self.pedido[producto][1] += cajas_salida_asignadas
                 total_cajas_salida -= cajas_salida_asignadas
             
             if total_cajas_salida == 0:
                 break  # Salir del bucle si no hay más cajas de entrada disponibles
 
+        print("PEDIDO", self.pedido)
         # Se guardan las posiciones de los cargadores
         combinaciones_cargadores = [(x + 10, y) for x in range(3) for y in range(1)]
         self.pos_cargadores = []
@@ -475,14 +474,9 @@ class Habitacion(Model):
         ]
         posiciones_disponibles.remove((0,10)) #no se eliminar la posicion de salida para que luego pueda haber una Celda ahi y despues usarla como objetivo
 
-        # Se guardan las posiciones de los robots creando todas las combinaciones
-        combinaciones = [(x, y) for x in range(5) for y in range(2)]
-
-        # Ordenar las combinaciones por el valor de y de forma descendente
-        combinaciones.sort(key=lambda tup: tup[1], reverse=True)
-
+        pos_iniciales=[(0,0), (0,1), (1,0), (0,2), (2,0), (0,3), (3,0), (0,4), (4,0), (0,5)]
         # Asignar las posiciones a los primeros num_agentes robots
-        self.pos_robots = combinaciones[:num_agentes]
+        self.pos_robots = pos_iniciales[:num_agentes]
 
          # Posicionamiento de celdas 
         for id, pos in enumerate(posiciones_disponibles):
@@ -506,7 +500,7 @@ class Habitacion(Model):
             self.schedule.add(cargador)
 
         # Posicionamiento de estantes con 3 estantes de cada producto
-        claves = list(pedido.keys())
+        claves = list(self.pedido.keys())
         cont=0
         i=0
         for id, pos in enumerate(self.pos_estantes):
@@ -597,12 +591,4 @@ class Habitacion(Model):
 #    Método para la obtención de la grid y representarla en un notebook  
 def get_grid(model: Model) -> np.ndarray:
     grid = np.zeros((model.grid.width, model.grid.height))
-    for cell in model.grid.coord_iter():
-        cell_content, pos = cell
-        x, y = pos
-        for obj in cell_content:
-            if isinstance(obj, Robot):
-                grid[x][y] = 2
-            elif isinstance(obj, Celda):
-                grid[x][y] = int(obj.sucia)
     return grid

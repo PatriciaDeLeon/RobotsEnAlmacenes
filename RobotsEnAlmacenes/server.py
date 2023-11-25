@@ -130,7 +130,15 @@ def receive_data():
         # Calcular el número total de steps
         total_steps = minutes * 60 + seconds
 
-        # Actualizamos el modelo
+       
+        model_params["num_agentes"].value = robots
+        model_params["num_cargadores"].value = chargers
+        model_params["num_cajas_entrada"].value = in_boxes
+        model_params["num_cajas_salida"].value = out_boxes
+        model_params["total_steps"] = total_steps
+        tiempo = 0
+
+ # Actualizamos el modelo
         server.model = make_model(
             num_agentes = robots,
             num_cargadores=chargers,
@@ -140,9 +148,6 @@ def receive_data():
             N=model_params["N"],
             total_steps = total_steps  
         )
-        model_params["num_agentes"].value = robots
-        model_params["total_steps"] = total_steps
-        tiempo = 0
 
         # Lanzamos la simulación
         server.launch()
