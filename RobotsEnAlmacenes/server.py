@@ -149,7 +149,8 @@ def receive_data():
             num_cajas_salida=out_boxes,
             M=model_params["M"],
             N=model_params["N"],
-            total_steps = total_steps  
+            total_steps = total_steps,
+            state = 1
         )
 
         # Lanzamos la simulación
