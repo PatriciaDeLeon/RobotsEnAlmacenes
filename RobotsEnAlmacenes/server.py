@@ -15,6 +15,7 @@ in_boxes = 6
 out_boxes = 3
 steps = 120
 total_steps = 60
+state = 1
 
 
 def agent_portrayal(agent):
@@ -48,8 +49,6 @@ def agent_portrayal(agent):
             portrayal["Color"] = "black"
         return portrayal
     
-
-
 grid = mesa.visualization.CanvasGrid(agent_portrayal, 20, 20, 400, 400)
 
 model_params = {
@@ -87,18 +86,20 @@ model_params = {
     ),
     "M": 20,
     "N": 20,
-    "total_steps": total_steps  # Aquí debes proporcionar un valor adecuado para total_steps
+    "total_steps": total_steps,  # Aquí debes proporcionar un valor adecuado para total_steps
+    "state": state
 }
 
 app = Flask(__name__)
 
-def make_model(num_agentes, num_cargadores, num_cajas_entrada, num_cajas_salida, total_steps, M, N):
+def make_model(num_agentes, num_cargadores, num_cajas_entrada, num_cajas_salida, total_steps, state, M, N):
     return Habitacion(
         num_agentes=num_agentes,
         num_cargadores=num_cargadores,
         num_cajas_entrada=num_cajas_entrada,
         num_cajas_salida=num_cajas_salida,
         total_steps=total_steps,
+        state = 1,
         M=M,
         N=N
     )
@@ -137,6 +138,8 @@ def receive_data():
         model_params["num_cajas_salida"].value = out_boxes
         model_params["total_steps"] = total_steps
         tiempo = 0
+        state = 1
+
 
  # Actualizamos el modelo
         server.model = make_model(
@@ -208,6 +211,23 @@ def get_simulation_data():
         return jsonify(data)
     else:
         return jsonify({"error": "El modelo no es una instancia de Habitacion"})
+    
+@app.route("/receive_state", methods=["POST"])
+def receive_state():
+    global state
+    try:
+        data_json = request.json
+        print(data_json)
+        state = data_json["state"]
+
+        # Llama al método en tu modelo para procesar los datos de Unity
+        server.model.receive_state(state)
+
+        return jsonify({"success": True})  # Agrega una respuesta de éxito
+    except Exception as e:
+        print(str(e))
+        return jsonify({"error": str(e)})
+
     
 if __name__ == "__main__":
     app.run(port=5000)

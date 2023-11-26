@@ -228,6 +228,7 @@ class Robot(Agent):
                 if self.objetivo in estantes:
                     print(self.unique_id,"vengo a dejar cambio aux a 1")
                     aux=1
+                    self.model.cajas_entregadas += 1
                 else: 
                     aux=0
                 #para que cuando se llegue a la pos_inicial no se desmarque y no entre en el estado de buscar caja
@@ -254,7 +255,6 @@ class Robot(Agent):
                     print(self.unique_id,"llevando a estante")
                     self.objetivo=estante
                     self.objetivo.ocupado=1 #y el estante se marca como ocupado
-                    self.model.cajas_entregadas += 1
                     break
             #mueve la caja consigo
             for caja in cajas:
@@ -382,6 +382,7 @@ class Habitacion(Model):
                  num_cajas_entrada: int = 4,
                  num_cajas_salida: int = 4,
                  total_steps: int = 120,
+                state: int = 1,
                  pedido : dict = {},
                  combinaciones_cargadores: list = []
                  ):
@@ -391,6 +392,7 @@ class Habitacion(Model):
         self.num_cajas_entrada = num_cajas_entrada
         self.num_cajas_salida = num_cajas_salida
         self.total_steps = total_steps
+        self.state = state
         self.todas_celdas_limpias = False
         self.pedido=pedido
 
@@ -401,6 +403,7 @@ class Habitacion(Model):
         self.cajas_entregadas = 0
         self.cajas_enviadas = 0
         self.total_steps = total_steps
+        self.state = 1
         self.running = True
 
         # Permite la habilitación de las capas en el ambiente
@@ -528,12 +531,15 @@ class Habitacion(Model):
 
     # ✓ Función encargada de ejecutar un paso en la simulación 
     def step(self):
-               
+        
         # Verificar si se alcanzó el límite de steps
-        if self.tiempo == self.total_steps:
+        if self.tiempo == self.total_steps or self.state == 5:
             self.running = False
+        elif (self.state == 0):
+            print("Pausa")
         else:
             # Recolecta la información de las gráficas
+            self.running = 1
             self.datacollector.collect(self)
             self.schedule.step()
             self.tiempo += 1
@@ -587,6 +593,9 @@ class Habitacion(Model):
             "MovimientosTotales": self.movimientos
         }
         return data
+    def receive_state(self, state):
+        self.state = state
+        print("Received data from Unity:", self.state)
     
 #    Método para la obtención de la grid y representarla en un notebook  
 def get_grid(model: Model) -> np.ndarray:
