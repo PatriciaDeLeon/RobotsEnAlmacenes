@@ -242,13 +242,15 @@ class Robot(Agent):
         if self.carga < 100 and self.pos in self.model.pos_cargadores:
             # Aumentar la carga
             print(self.unique_id,"estoy cargando")
+
             self.cargar_robot()
         # 2. El robot tiene un cargador y está viajando hacia este
         elif self.objetivo in cargadores:
             # Acercarse al cargador
             self.viajar_a_objetivo()
+
             print(self.unique_id,"estoy vianjando a cargador")
-         # 5. Ya esta en la posicion de entrada para recoger
+         # 3. Ya esta en la posicion de entrada para recoger
         elif self.pos == (0,10):
             for estante in estantes: #encuentra un estante del mismo tipo de la caja que esta recogiendo y que no este ocupado
                 if estante.producto==objetivo_producto and estante.ocupado==0:
@@ -268,7 +270,8 @@ class Robot(Agent):
                 if caja.pos==self.pos: #mueve la caja consigo
                     self.viajar_a_objetivo()
                     caja.sig_pos=self.sig_pos
-        #6. Esta en algun estante para llevarla a salida
+
+        #5. Esta en algun estante para llevarla a salida
         elif self.pos in self.model.pos_estantes and aux==0:
             print(self.unique_id, "llevando a salida")
             self.objetivo=celdadeCarga[0] #su objetivo es la celda de salida
@@ -279,17 +282,18 @@ class Robot(Agent):
             for estante in estantes:
                 if estante.pos == self.pos:
                     estante.ocupado=0
-        #7. Esta viajando a salida
+
+        #6. Esta viajando a salida
         elif self.objetivo == celdadeCarga[0]:
             self.viajar_a_objetivo()
             for caja in cajas:
                 if caja.pos==self.pos:
                     caja.sig_pos=self.sig_pos
-        #8. Esta yendo por una caja
+
+        #7. Esta yendo por una caja
         elif self.objetivo in cajas:
             self.viajar_a_objetivo()
-
-        
+  
         # 8. El robot tiene batería baja y necesita cargarse, entra aqui hasta su objetivo ya no sea un estante o la celda de salida
         elif self.carga <= 50 and self.objetivo == None :
             # Se le asigna el cargador más cercano y se acerca al cargador
@@ -303,27 +307,24 @@ class Robot(Agent):
             if not MitadPedidoCompleto:      
                 for product, cantidad in self.model.pedido.items():
                     if cantidad[0] != 0:
-                        break_outer = False  # Flag to signal if a break is requested
+                        break_outer = False  
                         for caja in cajas:
                             if caja.pos == (0,10):
                                 #si la caja del camion no es objetivo
                                 if caja not in objetivos and caja.pos not in pos_robots:
-                                    print(self.unique_id, "yendo a entradaAA")
-                                    print("ahhhh")
+                                    print(self.unique_id, "yendo a entrada")
                                     self.objetivo = caja #su objetivo es esa caja
-                                    print("CAJA",caja)
                                     self.viajar_a_objetivo()
-                                    print("OBSJ", self.sig_pos)
                                     self.model.pedido[product]=[cantidad[0]-1,cantidad[1]] #se disminuye uno al pedido
-                                    break_outer = True  # Set the flag to True to request a break
+                                    break_outer = True  
                                     break
                         if break_outer:
-                            break  # Break out of the outer loop as well
+                            break  
             
             if self.objetivo==None:
                 for product, cantidad in self.model.pedido.items():
                     if cantidad[1] != 0:
-                        break_outer = False  # Flag to signal if a break is requested
+                        break_outer = False 
                         for caja in cajas:
                             if caja.pos in self.model.pos_estantes and caja.producto == product:
                                 #si la caja del estante no ha sido marcada como objetivo
@@ -332,10 +333,10 @@ class Robot(Agent):
                                     self.objetivo = caja #su objetivo es esa caja
                                     self.viajar_a_objetivo()
                                     self.model.pedido[product]=[cantidad[0],cantidad[1]-1] #se disminuye uno al pedido
-                                    break_outer = True  # Set the flag to True to request a break
+                                    break_outer = True  
                                     break
                         if break_outer:
-                            break  # Break out of the outer loop as well
+                            break  
             
 
             #No hay cajas en la entrada ni para recoger de estantes
@@ -449,7 +450,6 @@ class Habitacion(Model):
             if total_cajas_salida == 0:
                 break  # Salir del bucle si no hay más cajas de entrada disponibles
 
-        print("PEDIDO", self.pedido)
         # Se guardan las posiciones de los cargadores
         combinaciones_cargadores = [(x + 10, y) for x in range(3) for y in range(1)]
         self.pos_cargadores = []
