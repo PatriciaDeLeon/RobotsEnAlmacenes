@@ -429,8 +429,6 @@ class Habitacion(Model):
         # Asignar cajas de entrada a cada producto de manera secuencial
         for _ in range(total_cajas_entrada):
             for producto in self.pedido:
-                print(producto)
-                print(total_cajas_entrada)
                 cajas_entrada_asignadas = min(total_cajas_entrada, 1)
                 self.pedido[producto][0] += cajas_entrada_asignadas
                 total_cajas_entrada -= cajas_entrada_asignadas
@@ -441,8 +439,6 @@ class Habitacion(Model):
         # Asignar cajas de salida a cada producto de manera secuencial
         for _ in range(total_cajas_salida):
             for producto in self.pedido:
-                # print(producto)
-                # print(total_cajas_salida)
                 cajas_salida_asignadas = min(total_cajas_salida, 1)
                 self.pedido[producto][1] += cajas_salida_asignadas
                 total_cajas_salida -= cajas_salida_asignadas
