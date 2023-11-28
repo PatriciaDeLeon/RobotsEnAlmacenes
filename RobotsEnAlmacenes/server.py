@@ -5,9 +5,9 @@ from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import CanvasGrid
 from model import Habitacion, Robot, Celda, Estante, Cargador, Caja
 
-MAX_NUMBER_ROBOTS = 20
+MAX_NUMBER_ROBOTS = 10
 MAX_CARGADORES = 3
-MAX_CAJAS = 100
+MAX_CAJAS = 18
 MAX_STEPS = 3600
 robots = 2
 chargers = 3
